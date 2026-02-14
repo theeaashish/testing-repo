@@ -1,1 +1,13 @@
-console.log("Hello via Bun!");
+import express from "express";
+
+const app  = express();
+
+
+app.get("/", (req, res) => {
+res.json({
+	message: "hey"
+	)}
+});
+
+
+app.listen(3000);
