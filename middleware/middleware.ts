@@ -1,39 +1,26 @@
-const sendErrorDev = (err, res) => {
-  res.status(err.statusCode || 500).json({
-    status: err.status || "error",
-    message: err.message,
-    stack: err.stack,
-    error: err,
+import { Request, Response, NextFunction } from "express";
+
+export const loggerMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const start = process.hrtime.bigint();
+
+  res.on("finish", () => {
+    const end = process.hrtime.bigint();
+    const durationMs = Number(end - start) / 1_000_000;
+
+    const log = {
+      requestId: req.headers["x-request-id"],
+      method: req.method,
+      url: req.originalUrl,
+      status: res.statusCode,
+      duration: `${durationMs.toFixed(2)}ms`,
+    };
+
+    console.log(JSON.stringify(log));
   });
+
+  next();
 };
-
-const sendErrorProd = (err, res) => {
-  // Operational, trusted error
-  if (err.isOperational) {
-    return res.status(err.statusCode).json({
-      status: err.status,
-      message: err.message,
-    });
-  }
-
-  // Programming or unknown error
-  console.error("UNEXPECTED ERROR 💥", err);
-
-  res.status(500).json({
-    status: "error",
-    message: "Something went wrong",
-  });
-};
-
-const errorHandler = (err, req, res, next) => {
-  err.statusCode = err.statusCode || 500;
-  err.status = err.status || "error";
-
-  if (process.env.NODE_ENV === "development") {
-    sendErrorDev(err, res);
-  } else {
-    sendErrorProd(err, res);
-  }
-};
-
-export default errorHandler;
