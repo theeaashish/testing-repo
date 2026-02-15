@@ -1,67 +1,38 @@
-# Error Handling Middleware (`middleware/middleware.ts`)
+# Logging Middleware (`middleware/middleware.ts`)
 
-This module exports the core Express error handling middleware, `errorHandler`, which formats error responses differently based on the environment (`development` vs. `production`).
-
-It relies on custom error objects having properties like `statusCode`, `status`, `message`, and optionally `isOperational` for production handling.
+This module exports a simple Express middleware, `loggerMiddleware`, designed to log details about incoming HTTP requests and their completion time to the console in JSON format.
 
 ## Key Components
 
-### `errorHandler` Middleware
+### `loggerMiddleware`
 
-This is the main Express error handling function, accepting the standard signature `(err, req, res, next)`.
+This middleware function intercepts requests, records the start time using high-resolution time, and attaches a listener to the response object's `finish` event.
 
 **Functionality:**
 
-1.  Sets default `statusCode` (500) and `status` ("error") on the error object if they are missing.
-2.  Routes the error handling to environment-specific functions:
-    *   If `process.env.NODE_ENV` is `"development"`, it calls `sendErrorDev`.
-    *   Otherwise (production), it calls `sendErrorProd`.
+1.  Records the start time (`process.hrtime.bigint()`) when the request is received.
+2.  When the response is finished (`res.on("finish", ...)`), it calculates the total duration of the request processing in milliseconds.
+3.  It constructs a log object containing:
+    *   `requestId` (read from `x-request-id` header, if present)
+    *   HTTP `method`
+    *   Request `url`
+    *   Response `status` code
+    *   Processing `duration` (formatted to two decimal places)
+4.  The resulting log object is serialized to JSON and printed to `console.log`.
+5.  It calls `next()` to pass control to the next middleware or route handler.
 
-### Internal Helper Functions
+## Usage
 
-#### `sendErrorDev(err, res)`
-
-Used for development environments. It returns the full error details to the client, including the stack trace and the original error object.
-
-**Response Structure (Development):**
-```json
-{
-  "status": "error" | "fail",
-  "message": "Error message",
-  "stack": "Stack trace...",
-  "error": { ... original error object ... }
-}
-```
-
-#### `sendErrorProd(err, res)`
-
-Used for production environments. It aims to send safe, generic responses while logging detailed errors internally.
-
-1.  **Operational Errors:** If `err.isOperational` is true (indicating a known, expected error like validation failure), it sends the specific status and message.
-2.  **Programming/Unknown Errors:** If the error is not operational, it logs the full error to the console (`console.error("UNEXPECTED ERROR 💥", err)`) and sends a generic message to the client.
-
-**Response Structure (Production - Operational Error):**
-```json
-{
-  "status": "error" | "fail",
-  "message": "Specific error message"
-}
-```
-
-**Response Structure (Production - Unknown Error):**
-```json
-{
-  "status": "error",
-  "message": "Something went wrong"
-}
-```
-
-## Export
-
-The middleware is exported as the default export:
+This middleware should be registered early in your Express application's middleware stack to ensure it captures the full lifecycle of requests before other processing occurs.
 
 ```typescript
-export default errorHandler;
-```
+import express from 'express';
+import { loggerMiddleware } from './middleware/middleware';
 
-This function should be registered **last** in your Express application's middleware stack to catch errors propagated from routes or other middleware. (See related documentation on general middleware usage).
+const app = express();
+
+// Register the logger middleware
+app.use(loggerMiddleware);
+
+// ... rest of your application setup
+```
