@@ -1,38 +1,43 @@
-# Logging Middleware (`middleware/middleware.ts`)
+# Date Formatting Utility (`middleware/middleware.ts`)
 
-This module exports a simple Express middleware, `loggerMiddleware`, designed to log details about incoming HTTP requests and their completion time to the console in JSON format.
+This module exports a utility function, `formatDate`, designed to reliably format `Date` objects or date-like inputs (strings/numbers) into a human-readable string using internationalization standards.
 
 ## Key Components
 
-### `loggerMiddleware`
+### `formatDate(date, options?)`
 
-This middleware function intercepts requests, records the start time using high-resolution time, and attaches a listener to the response object's `finish` event.
+This function takes a date input and optional `Intl.DateTimeFormatOptions` and returns a formatted date string.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+| :--- | :--- | :--- |
+| `date` | `Date \| string \| number` | The date value to format. |
+| `options` | `Intl.DateTimeFormatOptions` (optional) | Custom formatting options to override defaults. |
 
 **Functionality:**
 
-1.  Records the start time (`process.hrtime.bigint()`) when the request is received.
-2.  When the response is finished (`res.on("finish", ...)`), it calculates the total duration of the request processing in milliseconds.
-3.  It constructs a log object containing:
-    *   `requestId` (read from `x-request-id` header, if present)
-    *   HTTP `method`
-    *   Request `url`
-    *   Response `status` code
-    *   Processing `duration` (formatted to two decimal places)
-4.  The resulting log object is serialized to JSON and printed to `console.log`.
-5.  It calls `next()` to pass control to the next middleware or route handler.
+1.  Attempts to create a `Date` object from the input.
+2.  Throws an `Error` if the resulting date is invalid (`NaN` time value).
+3.  Formats the date using `Intl.DateTimeFormat` with the locale set to `"en-IN"`.
+4.  Applies default styles (`dateStyle: "medium"`, `timeStyle: "short"`) unless overridden by the provided `options`.
 
-## Usage
+**Note on Context:**
+While this file is located in the `middleware/` directory, its primary export, `formatDate`, is a general-purpose utility for date formatting, distinct from the logging middleware described in related documentation.
 
-This middleware should be registered early in your Express application's middleware stack to ensure it captures the full lifecycle of requests before other processing occurs.
+## Usage Example
 
 ```typescript
-import express from 'express';
-import { loggerMiddleware } from './middleware/middleware';
+import { formatDate } from './middleware/middleware';
 
-const app = express();
+// Format the current date with default settings (medium date, short time)
+const formattedNow = formatDate(new Date());
+// Example output: "Oct 26, 2023, 10:30 AM"
 
-// Register the logger middleware
-app.use(loggerMiddleware);
-
-// ... rest of your application setup
+// Format a specific timestamp with custom options
+const customFormat = formatDate(1678886400000, {
+  weekday: 'long',
+  hour: '2-digit',
+});
+// Example output: "Wednesday, 12 AM"
 ```
