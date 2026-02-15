@@ -1,26 +1,17 @@
-import { Request, Response, NextFunction } from "express";
-
-export const loggerMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
+// Format date using Intl with safe defaults
+export const formatDate = (
+  date: Date | string | number,
+  options?: Intl.DateTimeFormatOptions,
 ) => {
-  const start = process.hrtime.bigint();
+  const parsedDate = new Date(date);
 
-  res.on("finish", () => {
-    const end = process.hrtime.bigint();
-    const durationMs = Number(end - start) / 1_000_000;
+  if (isNaN(parsedDate.getTime())) {
+    throw new Error("Invalid date provided");
+  }
 
-    const log = {
-      requestId: req.headers["x-request-id"],
-      method: req.method,
-      url: req.originalUrl,
-      status: res.statusCode,
-      duration: `${durationMs.toFixed(2)}ms`,
-    };
-
-    console.log(JSON.stringify(log));
-  });
-
-  next();
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    ...options,
+  }).format(parsedDate);
 };
